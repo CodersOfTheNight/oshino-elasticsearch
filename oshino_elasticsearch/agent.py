@@ -32,7 +32,7 @@ def unwrap_metric(event_fn, path, key, metric):
 
     elif isinstance(metric, dict):
         for k, v in metric.items():
-            unwrap_metric(event_fn, path + ".{0}".format(k), k, v)
+            unwrap_metric(event_fn, path + ".{1}.{0}".format(k, key), k, v)
     else:
         logger.debug("Skipping metric: {0}:{1} because it is not numeric"
                     .format(key, metric))
