@@ -1,9 +1,12 @@
 import aiohttp
 
 from time import time
+from logbook import Logger
 
 from oshino import Agent
 from oshino.agents.http_agent import HttpAgent
+
+logger = Logger("ElasticSearchAgent")
 
 
 def translate_cluster_status(status):
@@ -21,21 +24,25 @@ async def _pull_data(path):
             return await resp.json()
 
 
+def unwrap_metric(event_fn, path, key, metric):
+    if isinstance(metric, (int, float)):
+        event_fn(service=path + ".{0}".format(key),
+                 metric_f=float(metric),
+                 state="ok")
+
+    elif isinstance(metric, dict):
+        for k, v in metric.items():
+            unwrap_metric(event_fn, path + ".{0}".format(k), k, v)
+    else:
+        logger.debug("Skipping metric: {0}:{1} because it is not numeric"
+                    .format(key, metric))
+
+
 class ElasticSearchAgent(HttpAgent):
-    MODE_CLUSTER = 0
-    MODE_NODE = 1
 
     @property
     def api_version(self):
         return self._data.get("api_version", "5.6")
-
-    @property
-    def mode(self):
-        mode = self._data.get("mode", "cluster")
-        if mode == "cluster":
-            return self.MODE_CLUSTER
-        else:
-            return self.MODE_NODE
 
     @property
     def fields(self):
@@ -54,7 +61,7 @@ class ElasticSearchAgent(HttpAgent):
         path = "{0}/_cluster/health".format(self.url)
         return await _pull_data(path)
 
-    async def retrieve_node_info(self, node="_local"):
+    async def retrieve_nodes_info(self, node="_all"):
         path = ("{0}/_nodes/{1}/stats/{2}"
                 .format(self.url, node, ",".join(self.fields)))
         return await _pull_data(path)
@@ -89,5 +96,11 @@ class ElasticSearchAgent(HttpAgent):
                      description=self.url)
 
         # Retrieving technical info
+        technical_info = await self.retrieve_nodes_info("_all")
+        logger.trace("Got node technical info: {0}".format(technical_info))
+        for h, node in technical_info["nodes"].items():
+            name = node["name"]
+            host = node["host"]
 
-
+            for field in self.fields:
+                unwrap_metric(event_fn, self.prefix + name, field, node[field])
