@@ -13,8 +13,8 @@ riemann:
   host: localhost
   port: 5555
 agents:
-  - name: health-check
-    module: oshino_elasticsearch.ElasticSearchAgent
+  - name: cluster-health
+    module: oshino_elasticsearch.agent.ElasticSearchAgent
     url: http://es.master.dev:9200
     tag: es
 ```
