@@ -22,9 +22,41 @@ async def _pull_data(path):
 
 
 class ElasticSearchAgent(HttpAgent):
+    MODE_CLUSTER = 0
+    MODE_NODE = 1
+
+    @property
+    def api_version(self):
+        return self._data.get("api_version", "5.6")
+
+    @property
+    def mode(self):
+        mode = self._data.get("mode", "cluster")
+        if mode == "cluster":
+            return self.MODE_CLUSTER
+        else:
+            return self.MODE_NODE
+
+    @property
+    def fields(self):
+        default_fields = [
+                "transport",
+                "http",
+                "process",
+                "jvm",
+                "indices",
+                "thread_pool"
+        ]
+
+        return self._data.get("fields", default_fields)
 
     async def retrieve_cluster_health(self):
         path = "{0}/_cluster/health".format(self.url)
+        return await _pull_data(path)
+
+    async def retrieve_node_info(self, node="_local"):
+        path = ("{0}/_nodes/{1}/stats/{2}"
+                .format(self.url, node, ",".join(self.fields)))
         return await _pull_data(path)
 
     async def process(self, event_fn):
@@ -55,4 +87,7 @@ class ElasticSearchAgent(HttpAgent):
                      metric_f=float(val),
                      state="ok",
                      description=self.url)
+
+        # Retrieving technical info
+
 
