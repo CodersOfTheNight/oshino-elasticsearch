@@ -78,7 +78,7 @@ class ElasticSearchAgent(HttpAgent):
 
         te = time()
         span = int((te - ts) * 1000)
-        event_fn(service=self.prefix + "health",
+        event_fn(service=self.prefix + "cluster.health",
                  metric_f=span,
                  state=str(state),
                  description=self.url)
@@ -90,7 +90,7 @@ class ElasticSearchAgent(HttpAgent):
 
 
         for key, val in cluster_health.items():
-            event_fn(service=self.prefix + key,
+            event_fn(service=self.prefix + "cluster." + key,
                      metric_f=float(val),
                      state="ok",
                      description=self.url)
@@ -103,4 +103,7 @@ class ElasticSearchAgent(HttpAgent):
             host = node["host"]
 
             for field in self.fields:
-                unwrap_metric(event_fn, self.prefix + name, field, node[field])
+                unwrap_metric(event_fn,
+                              self.prefix + "nodes." + name,
+                              field,
+                              node[field])
