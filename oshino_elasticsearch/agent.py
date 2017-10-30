@@ -1,3 +1,7 @@
+import aiohttp
+
+from time import time
+
 from oshino import Agent
 from oshino.agents.http_agent import HttpAgent
 
@@ -14,7 +18,7 @@ def translate_cluster_status(status):
 async def _pull_data(path):
     async with aiohttp.ClientSession() as session:
         async with session.get(path) as resp:
-            return resp.json()
+            return await resp.json()
 
 
 class ElasticSearchAgent(HttpAgent):
@@ -29,6 +33,8 @@ class ElasticSearchAgent(HttpAgent):
 
         # Parsing cluster health state
         cluster_health = await self.retrieve_cluster_health()
+        logger.trace("Got content from ElasticSearch cluster health: {0}"
+                     .format(cluster_health))
         state = translate_cluster_status(cluster_health["status"])
 
         te = time()
